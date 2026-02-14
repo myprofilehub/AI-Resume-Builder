@@ -64,6 +64,26 @@ export default function PortfolioPreview() {
             setSelectedTemplate(savedTemplate);
         }
 
+        // Track portfolio view (increment counter)
+        const trackView = async () => {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+            try {
+                // Decode user ID from JWT (simple base64 decode of payload)
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                if (payload.userId) {
+                    await fetch('/api/portfolio-views', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ userId: payload.userId }),
+                    });
+                }
+            } catch (err) {
+                // Silently fail — view tracking is non-critical
+            }
+        };
+        trackView();
+
         // Load GitHub token
         const savedGhToken = localStorage.getItem('github_token');
         if (savedGhToken) setGithubToken(savedGhToken);

@@ -71,7 +71,7 @@ export async function GET(req) {
             where: { userId }
         });
 
-        return NextResponse.json(resume ? resume.content : null);
+        return NextResponse.json(resume ? { ...resume.content, updatedAt: resume.updatedAt } : null);
 
     } catch (error) {
         console.error('Fetch error:', error);

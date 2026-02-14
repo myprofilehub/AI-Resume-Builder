@@ -35,12 +35,34 @@ export default function ResumeBuilder() {
     const [templateId, setTemplateId] = useState('modern');
     const { calculateScore } = useATSScore(resumeData);
     const [atsScore, setAtsScore] = useState(0);
+    const [lastUpdated, setLastUpdated] = useState(null);
+    const [portfolioViews, setPortfolioViews] = useState(0);
 
     // Calculate score whenever data changes
     useEffect(() => {
         const result = calculateScore();
-        setAtsScore(result.score || 75); // Mock score for now if undefined
+        setAtsScore(result.score);
     }, [resumeData, calculateScore]);
+
+    // Fetch portfolio views
+    useEffect(() => {
+        const fetchViews = async () => {
+            const token = localStorage.getItem('token');
+            if (!token) return;
+            try {
+                const res = await fetch('/api/portfolio-views', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    setPortfolioViews(data.views || 0);
+                }
+            } catch (err) {
+                console.error('Failed to fetch views:', err);
+            }
+        };
+        fetchViews();
+    }, [user]);
 
     // Load data from API on mount
     useEffect(() => {
@@ -53,8 +75,12 @@ export default function ResumeBuilder() {
                     if (res.ok) {
                         const data = await res.json();
                         if (data) {
-                            if (data.content) setResumeData(data.content);
-                            if (data.templateId) setTemplateId(data.templateId);
+                            // updatedAt is at top level alongside content fields
+                            if (data.updatedAt) setLastUpdated(data.updatedAt);
+                            // Extract resume content (everything except updatedAt)
+                            const { updatedAt, ...content } = data;
+                            if (content.personalInfo) setResumeData(content);
+                            if (content.templateId) setTemplateId(content.templateId);
                         }
                     }
                 } catch (error) {
@@ -124,7 +150,10 @@ export default function ResumeBuilder() {
                 },
                 body: JSON.stringify({ content: resumeData, templateId }) // Send templateId
             });
-            if (res.ok) alert('Saved successfully!');
+            if (res.ok) {
+                setLastUpdated(new Date().toISOString());
+                alert('Saved successfully!');
+            }
         } catch (error) {
             console.error(error);
             alert('Failed to save');
@@ -238,7 +267,7 @@ export default function ResumeBuilder() {
         <div className="flex flex-col gap-6 pb-12">
 
             {/* Analytics Overview */}
-            <AnalyticsDashboard atsScore={atsScore} views={user ? 124 : 0} />
+            <AnalyticsDashboard atsScore={atsScore} views={portfolioViews} resumeData={resumeData} lastUpdated={lastUpdated} />
 
             {/* Action Bar */}
             <header className="flex justify-between items-center bg-white/50 backdrop-blur-sm p-4 rounded-2xl border border-white/20 shadow-sm sticky top-4 z-40 bg-white/80">
